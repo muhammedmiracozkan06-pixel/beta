@@ -1,25 +1,29 @@
 /**
- * Pilot AI - Omega Debug Edition
+ * Pilot AI - Omega 2.0 Stable
  * Developed by Wind Developers (Mirac Özkan)
+ * 2026 Next-Gen AI Engine
  */
 
 window.PilotAI = {
     isSending: false,
+    // API KEYS
     groqKey: "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", 
     geminiKey: "AIzaSyBJ4fS005XYgo33bFP77-03Zm56N307O_U", // <--- Burayı doldur kanka!
+    
     userName: localStorage.getItem('p_user_name') || "Guest",
     isAuth: localStorage.getItem('p_is_auth') === 'true',
-    selectedImageBase64: null
+    
+    selectedImageBase64: null,
+    chatHistory: [] 
 };
 
-// --- 1. DEBUG LOG FONKSİYONU ---
+// --- 1. DEBUG LOG ---
 function debugLog(title, data) {
     console.log(`%c[Pilot AI Debug - ${title}]`, "color: #4ade80; font-weight: bold;", data);
 }
 
 // --- 2. AUTH & WMAIL ---
 function checkAuth() {
-    debugLog("Auth Check", "Checking URL parameters...");
     const urlParams = new URLSearchParams(window.location.search);
     const hasLogin = urlParams.get('login') === 'true';
     const wmailName = urlParams.get('name');
@@ -30,7 +34,6 @@ function checkAuth() {
         localStorage.setItem('p_is_auth', 'true');
         localStorage.setItem('p_user_name', window.PilotAI.userName);
         window.history.replaceState({}, document.title, window.location.pathname);
-        debugLog("Auth Success", `Welcome ${window.PilotAI.userName}`);
     }
 
     if (window.PilotAI.isAuth) {
@@ -40,17 +43,18 @@ function checkAuth() {
     }
 }
 
-// --- 3. GEMMA ENGINE (HATA AYIKLAMALI) ---
+// --- 3. GEMINI 2.0 ENGINE (METİN + GÖRSEL) ---
 async function callGemmaEngine(text, imageBase64) {
+    // Model ismini en güncel 2.0 yaptık
     const model = "gemini-2.0-flash"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${window.PilotAI.geminiKey}`;
     
-    debugLog("Engine Call", `Using model: ${model}`);
+    debugLog("Engine Call", `Requesting Gemini 2.0 Flash...`);
 
-    let parts = [{ text: `Sen Pilot AI'sın. Kullanıcı: ${window.PilotAI.userName}. Daima Türkçe yanıt ver. Soru: ${text || "Görseli analiz et."}` }];
+    let parts = [{ text: `Sen Wind Developers tarafından geliştirilen Pilot AI'sın. Kullanıcı: ${window.PilotAI.userName}. Daima Türkçe yanıt ver. Profesyonel ve zeki ol. Soru: ${text || "Bu görseli analiz et."}` }];
     
     if (imageBase64) {
-        debugLog("Image Info", "Image detected, adding to payload...");
+        debugLog("Image Process", "Görsel verisi Vision motoruna yükleniyor...");
         parts.push({
             inline_data: {
                 mime_type: "image/jpeg",
@@ -67,22 +71,19 @@ async function callGemmaEngine(text, imageBase64) {
 
     const data = await res.json();
     
-    // EĞER HATA VARSA KONSOLA YAZDIR
     if (data.error) {
         console.error("!!! GOOGLE API HATASI !!!", data.error);
         throw new Error(`${data.error.message} (${data.error.status})`);
     }
 
     if (!data.candidates || data.candidates.length === 0) {
-        debugLog("Empty Response", data);
-        throw new Error("Google response is empty. (Check Safety Filters)");
+        throw new Error("Yanıt boş döndü. Güvenlik filtreleri veya kısıtlı içerik olabilir.");
     }
 
-    debugLog("Full Response Data", data);
     return data.candidates[0].content.parts[0].text;
 }
 
-// --- 4. GROQ ENGINE ---
+// --- 4. GROQ ENGINE (HIZLI METİN) ---
 async function callGroqEngine(text, model) {
     debugLog("Groq Call", `Using model: ${model}`);
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -95,14 +96,11 @@ async function callGroqEngine(text, model) {
     });
     
     const data = await res.json();
-    if (data.error) {
-        console.error("!!! GROQ API HATASI !!!", data.error);
-        throw new Error(data.error.message);
-    }
+    if (data.error) throw new Error(data.error.message);
     return data.choices[0].message.content;
 }
 
-// --- 5. MAIN HANDLER ---
+// --- 5. ANA GÖNDERME MOTORU ---
 async function handleSend() {
     const input = document.getElementById('user-input');
     const modelSelect = document.getElementById('model-select');
@@ -113,17 +111,18 @@ async function handleSend() {
     if (!text && !currentImg) return;
     if (window.PilotAI.isSending) return;
 
-    addMessage(text || "(Görsel Analizi Bekleniyor)", 'user-msg');
+    addMessage(text || "(Görsel Analiz Ediliyor...)", 'user-msg');
     input.value = '';
     window.PilotAI.isSending = true;
 
     try {
         let result = "";
-        if (selectedModel === "gemma") {
+        // Eğer Gemma seçiliyse veya model ismi gemma içeriyorsa
+        if (selectedModel === "gemma" || selectedModel.includes("gemini")) {
             result = await callGemmaEngine(text, currentImg);
         } else {
             if (currentImg) {
-                result = "⚠️ Bu model görsel desteklemez. 'Gemma' seç kanka.";
+                result = "⚠️ Bu model görsel desteklemez. Lütfen 'Gemma Engine' seçin kanka.";
             } else {
                 result = await callGroqEngine(text, selectedModel);
             }
@@ -133,6 +132,7 @@ async function handleSend() {
         console.error("Kritik Hata:", e);
         addMessage(`⚠️ Engine Error: ${e.message}`, 'ai-msg');
     } finally {
+        // Görseli gönderdikten sonra temizle
         if (currentImg && document.getElementById('remove-img-btn')) {
             document.getElementById('remove-img-btn').click();
         }
@@ -140,7 +140,7 @@ async function handleSend() {
     }
 }
 
-// --- 6. UTILS & INIT ---
+// --- 6. ARAYÜZ VE BAŞLATMA ---
 function addMessage(text, className) {
     const chat = document.getElementById('chat-window');
     const div = document.createElement('div');
@@ -150,7 +150,7 @@ function addMessage(text, className) {
     chat.scrollTop = chat.scrollHeight;
 }
 
-// Görsel Seçme İşlemleri
+// Görsel Yükleme Butonları
 document.getElementById('upload-btn').onclick = () => document.getElementById('image-input').click();
 document.getElementById('image-input').onchange = (e) => {
     const file = e.target.files[0];
@@ -164,15 +164,19 @@ document.getElementById('image-input').onchange = (e) => {
         reader.readAsDataURL(file);
     }
 };
+
 document.getElementById('remove-img-btn').onclick = () => {
     window.PilotAI.selectedImageBase64 = null;
     document.getElementById('image-input').value = "";
     document.getElementById('image-preview-container').style.display = 'none';
 };
 
+// Başlangıç Ayarları
 window.onload = () => {
     checkAuth();
+    debugLog("System", "Pilot AI Omega Engine Ready.");
 };
 
+// Buton ve Enter Dinleyicileri
 document.getElementById('send-btn').onclick = handleSend;
 document.getElementById('user-input').onkeydown = (e) => { if(e.key === 'Enter') handleSend(); };
