@@ -42,7 +42,7 @@ function checkAuth() {
 
 // --- 3. GEMMA ENGINE (HATA AYIKLAMALI) ---
 async function callGemmaEngine(text, imageBase64) {
-    const model = "gemini-1.5-flash"; 
+    const model = "models/gemini-1.5-flash"; 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${window.PilotAI.geminiKey}`;
     
     debugLog("Engine Call", `Using model: ${model}`);
