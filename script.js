@@ -112,7 +112,7 @@ async function createGoogleDoc(title, content = "") {
 
 // --- 4. MAIN ENGINES (GEMMA & GROQ) ---
 async function callGemmaEngine(text, imageBase64) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${window.PilotAI.geminiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${window.PilotAI.geminiKey}`;
     
     let parts = [{ text: `You are Pilot AI. User: ${window.PilotAI.userName}. Respond in Turkish. ${text}` }];
     
